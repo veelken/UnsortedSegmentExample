@@ -7,16 +7,16 @@ class UnsortedSegmentExample(nn.Module):
     Args:
         - `mode`           (str)         : either "sum" to test unsorted_segment_sum or "mean" to test unsorted_segment_mean
         - `segment_ids`    (torch.Tensor): segment_ids parameter passed to unsorted_segment_sum and unsorted_segment_mean functions
-        - `num_segments`   (int)         : num_segments parameter passed to unsorted_segment_sum and unsorted_segment_mean functions
+        - `num_segments`   (torch.Tensor): num_segments parameter passed to unsorted_segment_sum and unsorted_segment_mean functions
     '''
-    def __init__(self, mode : str, segment_ids : torch.Tensor, num_segments : int) -> None:
+    def __init__(self, mode : str, segment_ids : torch.Tensor, num_segments : torch.Tensor) -> None:
         print("<UnsortedSegmentExample::init>:")
         print(" mode = '%s'" % mode)
         super(UnsortedSegmentExample, self).__init__()
 
         self.mode = mode
         self.segment_ids = segment_ids
-        self.num_segments = num_segments
+        self.num_segments = int(num_segments[0])
 
     def forward(self, data : torch.Tensor) -> torch.Tensor:
         if self.mode == "sum":
