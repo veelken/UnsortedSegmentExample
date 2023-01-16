@@ -9,6 +9,8 @@ at the address:
 
 git clone https://github.com/veelken/UnsortedSegmentExample
 
+git remote set-url origin git+ssh://git@github.com/veelken/UnsortedSegmentExample.git
+
 # To Run
 
 cd UnsortedSegmentExample
