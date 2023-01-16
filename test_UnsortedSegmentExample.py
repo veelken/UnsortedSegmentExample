@@ -10,6 +10,7 @@ import argparse
 from UnsortedSegmentExample import UnsortedSegmentExample
 from torch.nn.parallel import DataParallel
 import platform
+from torch.onnx.verification import find_mismatch
 
 parser = argparse.ArgumentParser(description='test conversion of unsorted_segment_sum and unsorted_segment_mean function from PyTorch to ONNX')
 parser.add_argument('--mode', type=str, default='', metavar='N',
@@ -62,13 +63,15 @@ if __name__ == "__main__":
     ]
     data = torch.Tensor(raw_data).to(device, torch.float32)
     print("data = ", data)
+    print("shape(data) = ", data.shape)
     raw_segment_ids = [ 
         0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5 
     ]
     assert len(raw_data) == len(raw_segment_ids)
     segment_ids = torch.Tensor(raw_segment_ids).to(device, torch.int64)
     print("segment_ids = ", segment_ids) 
-    num_segments = 6
+    raw_num_segments = 6
+    num_segments = torch.Tensor([ raw_num_segments ]).to(device, torch.int64)
     print(" ...Done.")
 
     ### compute expected output
@@ -117,6 +120,12 @@ if __name__ == "__main__":
     ### generate object of type 'ScriptModule' for PyTorch model
     print("Converting PyTorch model to ONNX format...")
     torch_script = torch.jit.script(torch_model)
+    ##print("Graph representation of model:")
+    ##print(torch_script.graph)
+    ##print("Code representation of model:")
+    ##print(torch_script.code)
+    script_out = torch_script(data)
+    print("script_out = ", script_out) 
     print(" ...Done.")
 
     ### try to 'freeze' PyTorch model 
@@ -124,6 +133,14 @@ if __name__ == "__main__":
     print("Trying to 'freeze' PyTorch model...")
     torch.jit.freeze(torch_script)
     print(" ...Done.")
+
+    ### check for potential problems in converting PyTorch model to ONNX format,
+    ### cf. https://github.com/pytorch/pytorch/issues/91357#issuecomment-1374156787
+    find_mismatch(torch_script,
+                  (data, ))
+    ##find_mismatch(torch_model,
+    ##              (data, ))
+    raise ValueError("STOP.")
 
     ### save ONNX model
     ### NB.: syntax for calling 'export' function based on example taken from https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html,
@@ -135,14 +152,16 @@ if __name__ == "__main__":
       }
     }  
     torch.onnx.export(torch_script,              # model being run
-                      (data),                    # model input (or a tuple for multiple inputs)
+                      ##torch_model,
+                      (data, ),                  # model input (or a tuple for multiple inputs)
                       args.outputFile,           # where to save the model (can be a file or file-like object)
                       export_params=True,        # store the trained parameter weights inside the model file
                       opset_version=13,          # the ONNX version to export the model to
                       do_constant_folding=False, # whether to execute constant folding for optimization
                       input_names = ['data'],    # the model's input names 
                       output_names = ['out'],    # the model's output names
-                      dynamic_axes = dynamic_axes_dict)
+                      dynamic_axes = dynamic_axes_dict, 
+                      verbose=True)
     print(" ...Done.")
 
     ### check that ONNX model has valid schema
